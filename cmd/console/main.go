@@ -36,6 +36,16 @@ func main() {
 	)
 	flag.Parse()
 
+	// The mode is checked before the DSN because it is the argument that is wrong when
+	// someone mistypes, and answering a mistyped flag with a missing-environment error
+	// sends them looking in the wrong place. (This cost one red CI run to learn.)
+	switch *mode {
+	case "server", "migrate", "worker":
+	default:
+		fmt.Fprintf(os.Stderr, "unknown mode %q: want server, migrate or worker\n", *mode)
+		flag.Usage()
+		os.Exit(2)
+	}
 	if *dsn == "" {
 		log.Fatal("LIVEOPS_DSN is required")
 	}
@@ -111,9 +121,6 @@ func main() {
 			log.Printf("shutdown: %v", err)
 		}
 
-	default:
-		flag.Usage()
-		os.Exit(2)
 	}
 }
 

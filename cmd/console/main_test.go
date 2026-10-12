@@ -16,6 +16,7 @@ import (
 	"github.com/lasttoss/liveops-console/internal/events"
 	"github.com/lasttoss/liveops-console/internal/migrate"
 	"github.com/lasttoss/liveops-console/internal/pgstore"
+	"github.com/lasttoss/liveops-console/internal/pgtest"
 )
 
 func TestEnvHelpers(t *testing.T) {
@@ -42,19 +43,13 @@ func TestEnvHelpers(t *testing.T) {
 }
 
 func TestWorkerOncePrintsTheContractLines(t *testing.T) {
-	dsn := os.Getenv("LIVEOPS_TEST_DSN")
-	if dsn == "" {
-		t.Skip("LIVEOPS_TEST_DSN is not set: run make test-db")
-	}
 	ctx := context.Background()
-	store, err := pgstore.Open(dsn)
+	store, err := pgstore.Open(pgtest.DSN(t))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	defer store.Close()
-	if _, err := store.DB().ExecContext(ctx, `DROP TABLE IF EXISTS event_fires, events, config_revisions, audit_log, schema_migrations CASCADE`); err != nil {
-		t.Fatalf("reset: %v", err)
-	}
+	pgtest.Reset(t, store.DB())
 	if _, err := migrate.Apply(ctx, store.DB()); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

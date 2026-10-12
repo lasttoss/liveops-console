@@ -78,10 +78,8 @@ test-db:
 	@for i in $$(seq 1 40); do docker exec $(TEST_DB) pg_isready -U liveops >/dev/null 2>&1 && break; sleep 0.5; done
 	@docker run --rm --network container:$(TEST_DB) -v $(PWD):/app -v $(CACHE):/go -w /app \
 		-e LIVEOPS_TEST_DSN='postgres://liveops:liveops@127.0.0.1:5432/liveops?sslmode=disable' \
-		$(IMAGE) go test -race -coverprofile=/tmp/cover.out -covermode=atomic ./... || (docker stop $(TEST_DB) >/dev/null; exit 1)
-	@docker run --rm --network container:$(TEST_DB) -v $(PWD):/app -v $(CACHE):/go -w /app \
-		-e LIVEOPS_TEST_DSN='postgres://liveops:liveops@127.0.0.1:5432/liveops?sslmode=disable' \
-		$(IMAGE) sh -c 'go tool cover -func=/tmp/cover.out | grep -E "^(total|github.com/lasttoss/liveops-console/internal/pgstore)"'
+		$(IMAGE) sh -c 'go test -race -coverprofile=/tmp/cover.out -covermode=atomic ./... && go tool cover -func=/tmp/cover.out | tail -1' \
+		|| { docker stop $(TEST_DB) >/dev/null; exit 1; }
 	@docker stop $(TEST_DB) >/dev/null
 	@echo "test database stopped"
 
@@ -94,9 +92,17 @@ lint:
 build:
 	@$(RUN) go build -o /tmp/console ./cmd/console && echo "console builds"
 
+# Two assertions, both about the image rather than about docker: the binary runs, and
+# there is no shell inside - which is the reason the migrations are embedded in the binary
+# instead of applied by a script. The first version of this target printed "image ok"
+# while running a command that failed for a missing DSN, which is a gate that proves
+# nothing.
 image:
 	@docker build -q -t liveops-console:local . >/dev/null
-	@echo "image ok: $$(docker run --rm liveops-console:local --mode migrate 2>&1 | head -1)"
+	@docker run --rm liveops-console:local --mode nonsense 2>&1 | grep -q "unknown mode" && echo "image ok: the binary runs and rejects a bad mode"
+	@if docker run --rm --entrypoint /bin/sh liveops-console:local -c true >/dev/null 2>&1; then \
+		echo "unexpected: the image has a shell, so the embedded migrations are not the only option"; exit 1; \
+	else echo "image ok: no shell inside, so migrations must be embedded - and they are"; fi
 
 panel:
 	@docker compose up -d --build panel

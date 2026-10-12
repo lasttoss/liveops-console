@@ -111,6 +111,22 @@ people editing one key is a visible conflict rather than a lost change.
 and it would also mean this repository still has zero lines of frontend code - which is
 the gap it exists to close.
 
+## Each test package gets its own schema
+
+**Chosen:** `internal/pgtest` creates a schema per test package and points the DSN's
+`search_path` at it.
+
+**Not chosen:** `go test -p 1`. The integration tests drop and recreate their tables, and
+`go test ./...` runs packages in parallel, so the migrate tests and the store tests dropped
+each other's tables. Serialising would have hidden it on the machine that ran the full
+suite and left it to bite anyone running one package - and it was found exactly that way,
+by adding a second package that touches the schema. The schema is also cheaper than a
+per-test transaction, and it works for tests that must commit.
+
+The cleanup uses `DROP SCHEMA ... CASCADE`, which the audit trigger permits: it defends the
+rows, not the schema. That is the limitation named above, in the place where it is
+enforced rather than in a footnote.
+
 ## What this repository does not claim
 
 - Not multi-tenant: one database, one deployment, no per-tenant isolation story.

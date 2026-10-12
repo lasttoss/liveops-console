@@ -14,7 +14,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"reflect"
 	"sync"
 	"testing"
@@ -23,25 +22,22 @@ import (
 	"github.com/lasttoss/liveops-console/internal/auditlog"
 	"github.com/lasttoss/liveops-console/internal/events"
 	"github.com/lasttoss/liveops-console/internal/migrate"
+	"github.com/lasttoss/liveops-console/internal/pgtest"
 	"github.com/lasttoss/liveops-console/internal/remoteconfig"
 )
 
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
-	dsn := os.Getenv("LIVEOPS_TEST_DSN")
-	if dsn == "" {
-		t.Skip("LIVEOPS_TEST_DSN is not set: run make test-db")
-	}
-	st, err := Open(dsn)
+	// pgtest hands out a schema of its own, which is what lets this package's tests run
+	// at the same time as internal/migrate's instead of dropping each other's tables.
+	st, err := Open(pgtest.DSN(t))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { st.Close() })
+	pgtest.Reset(t, st.DB())
 
 	ctx := context.Background()
-	if _, err := st.DB().ExecContext(ctx, `DROP TABLE IF EXISTS event_fires, events, config_revisions, audit_log, schema_migrations CASCADE`); err != nil {
-		t.Fatalf("reset: %v", err)
-	}
 	if _, err := migrate.Apply(ctx, st.DB()); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

@@ -132,9 +132,9 @@ worker (same binary) ──▶ claims due fires, records the effect in the same 
 
 ## Numbers
 
-- **37 Go test functions** across 7 packages and **11 panel tests**; `go test -race` on
+- **41 Go test functions** across 8 packages and **11 panel tests**; `go test -race` on
   every push, with the integration tests running against a real PostgreSQL in CI.
-- **52.4% statement coverage** (`make coverage`). The number is printed rather than
+- **55.7% statement coverage** (`make coverage`). The number is printed rather than
   targeted: the two `cmd/` packages are clients, and their behaviour is the `demo` CI job
   which greps their output. Every *promise* in the table above is asserted - versions,
   conflicts, one effect under four concurrent workers, an uneditable trail.
