@@ -72,6 +72,17 @@ jobs:
           docker run --rm --network host -e LIVEOPS_DSN='postgres://liveops:liveops@localhost:5432/liveops?sslmode=disable' liveops-console:ci --mode migrate
           docker run --rm --network host -e LIVEOPS_DSN='postgres://liveops:liveops@localhost:5432/liveops?sslmode=disable' liveops-console:ci --mode worker --once
 
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      # The chart is how anyone else deploys this, and both of its branches are reachable by
+      # setting one value, so both are rendered and linted rather than one being reviewed.
+      # The target existed from the start and no workflow ran it: a gate nothing calls is a
+      # gate that cannot fail.
+      - run: make chart
+
   panel:
     runs-on: ubuntu-latest
     defaults:
