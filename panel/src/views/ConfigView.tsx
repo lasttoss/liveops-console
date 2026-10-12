@@ -15,9 +15,11 @@ export default function ConfigView({ client, me, game, env }: Props) {
   const [failure, setFailure] = useState<string | null>(null);
   const [conflict, setConflict] = useState<ConflictError | null>(null);
   const [baseVersion, setBaseVersion] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     setFailure(null);
+    setLoading(true);
     try {
       const revs = await client.revisions(game, env, key);
       setRevisions(revs.data.revisions);
@@ -35,6 +37,8 @@ export default function ConfigView({ client, me, game, env }: Props) {
       setStatus(`loaded v${latest.version} (ETag ${`"v${latest.version}"`})`);
     } catch (err) {
       setFailure(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
     }
   }, [client, game, env, key]);
 
@@ -86,7 +90,7 @@ export default function ConfigView({ client, me, game, env }: Props) {
   return (
     <section className="grid">
       <div className="col">
-        <h2>Read and edit</h2>
+        <h2>{writable ? "Read and edit" : "Read only"}</h2>
         <label className="field">
           key
           <input value={key} onChange={(e) => setKey(e.target.value)} />
@@ -156,45 +160,63 @@ export default function ConfigView({ client, me, game, env }: Props) {
       <div className="col">
         <h2>History</h2>
         <p className="muted">Nothing here is edited in place: a rollback appends the old payload as a new revision.</p>
-        <table>
-          <thead>
-            <tr>
-              <th>version</th>
-              <th>value</th>
-              <th>note</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {revisions.map((rev) => (
-              <tr key={rev.id} className={current && rev.version === current.version ? "is-current" : ""}>
-                <td>v{rev.version}</td>
-                <td>
-                  <code>{JSON.stringify(rev.value)}</code>
-                </td>
-                <td className="muted">{rev.note || "—"}</td>
-                <td>
-                  {rev.version !== current?.version && (
-                    <button
-                      className="ghost"
-                      disabled={!me || !canWrite(me.role, "config:rollback", env)}
-                      onClick={() => void rollback(rev.version)}
-                    >
-                      roll back to v{rev.version}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {revisions.length === 0 && (
+        <div className="table-wrap">
+          <table className="history">
+            <caption className="sr-only">
+              revisions of {key} in {game}/{env}
+            </caption>
+            <thead>
               <tr>
-                <td colSpan={4} className="muted">
-                  no revisions yet
-                </td>
+                <th scope="col">version</th>
+                <th scope="col">value</th>
+                <th scope="col">note</th>
+                <th scope="col">action</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {revisions.map((rev) => (
+                <tr key={rev.id} className={current && rev.version === current.version ? "is-current" : ""}>
+                  <td data-label="version" className="version">
+                    v{rev.version}
+                    {current && rev.version === current.version ? <span className="muted"> current</span> : null}
+                  </td>
+                  <td data-label="value">
+                    <code>{JSON.stringify(rev.value)}</code>
+                  </td>
+                  <td data-label="note" className="muted">{rev.note || "—"}</td>
+                  <td data-label="action">
+                    {rev.version !== current?.version && (
+                      <button
+                        className="ghost"
+                        disabled={!me || !canWrite(me.role, "config:rollback", env)}
+                        aria-label={`rollback ${key} to v${rev.version}`}
+                        title={`rollback appends v${rev.version}'s payload as a new revision`}
+                        onClick={() => void rollback(rev.version)}
+                      >
+                        rollback
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {loading && revisions.length === 0 && (
+                <tr>
+                  <td colSpan={4}>
+                    <span className="skeleton" />
+                    <span className="skeleton" />
+                  </td>
+                </tr>
+              )}
+              {!loading && revisions.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="muted">
+                    no revisions yet — publish a value on the left to start the history
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );

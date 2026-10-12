@@ -51,26 +51,30 @@ export default function AuditView({ client, me }: Props) {
         </button>
       </div>
       {failure && <p className="bad">{failure}</p>}
-      <table>
-        <thead>
-          <tr>
-            <th>when</th>
-            <th>actor</th>
-            <th>action</th>
-            <th>target</th>
-            <th>outcome</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((e) => (
+      <div className="table-wrap">
+        <table className="audit">
+          <caption className="sr-only">
+            audit entries{target ? ` for ${target}` : ""}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">when</th>
+              <th scope="col">actor</th>
+              <th scope="col">action</th>
+              <th scope="col">target</th>
+              <th scope="col">outcome</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((e) => (
             <tr key={e.id} className={e.outcome === "ok" ? "" : "is-refused"}>
-              <td className="muted">{new Date(e.at).toLocaleString()}</td>
-              <td>{e.actor}</td>
-              <td>
+              <td data-label="when" className="muted">{new Date(e.at).toLocaleString()}</td>
+              <td data-label="actor">{e.actor}</td>
+              <td data-label="action">
                 <code>{e.action}</code>
               </td>
-              <td className="muted">{e.target}</td>
-              <td>
+              <td data-label="target" className="muted">{e.target}</td>
+              <td data-label="outcome">
                 <span className={"outcome outcome-" + e.outcome}>{e.outcome}</span>
               </td>
             </tr>
@@ -82,8 +86,9 @@ export default function AuditView({ client, me }: Props) {
               </td>
             </tr>
           )}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
       <div className="row">
         <button
           className="ghost"

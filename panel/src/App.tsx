@@ -59,7 +59,7 @@ export default function App() {
           <code> If-Match</code>, so two people on one key see a conflict instead of losing a change.
         </p>
         <div className="controls">
-          <label>
+          <label className={error ? "invalid" : ""}>
             token
             <input
               type="password"
@@ -67,6 +67,8 @@ export default function App() {
               placeholder="admin-token · op-token · view-token"
               onChange={(e) => setToken(e.target.value.trim())}
               aria-label="bearer token"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "token-error" : undefined}
             />
           </label>
           <label>
@@ -90,19 +92,22 @@ export default function App() {
             </select>
           </label>
           <div className="whoami" role="status">
-            {error ? (
-              <span className="bad">{error}</span>
-            ) : me ? (
+            {me ? (
               <>
                 <span className="pill">{me.actor}</span>
                 <span className={"pill role-" + me.role}>{me.role}</span>
                 <span className="muted">{me.permissions.length} permissions</span>
               </>
             ) : (
-              <span className="muted">paste a token to begin</span>
+              <span className="muted">{error ? "not signed in" : "paste a token to begin — make demo prints one"}</span>
             )}
           </div>
         </div>
+        {error && (
+          <p id="token-error" className="err" role="alert">
+            {error} — the token box above holds what you pasted; check it or paste another.
+          </p>
+        )}
       </header>
 
       <nav>

@@ -4,7 +4,7 @@
 :root {
   --paper: #f6f6f4;
   --ink: #24272e;
-  --muted: #6b7280;
+  --muted: #5c6470;
   --line: #d8dade;
   --accent: #b3541e;
   --ok: #14653a;
@@ -59,7 +59,16 @@ nav button {
 nav button.active { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
-@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  /* minmax(0, 1fr), not 1fr: a bare 1fr track grows to the min-content width of a wide table
+     or <pre>, which is what pushed the whole page sideways on a phone. */
+  .grid { grid-template-columns: minmax(0, 1fr); }
+}
+/* Touch targets follow the pointer, not the width: an iPad in landscape is 1024 px wide and still
+   has no mouse. (pointer: coarse) keeps those controls at 44 px without stacking their layout. */
+@media (max-width: 900px), (pointer: coarse) {
+  button, input, select, textarea, nav button { min-height: 44px; }
+}
 h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 12px; }
 .field { margin-bottom: 12px; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -70,7 +79,7 @@ button.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
 
 .box { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
 .box-head { display: flex; justify-content: space-between; margin-bottom: 8px; }
-.box pre { margin: 0; white-space: pre-wrap; }
+.box pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -78,6 +87,49 @@ th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: 
 tr:last-child td { border-bottom: 0; }
 tr.is-current td { background: #fdf4ef; }
 tr.is-refused td { background: #fdf0f1; }
+
+/* A table scrolls inside its own wrapper; the page never gets a horizontal scrollbar. */
+.table-wrap { overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; min-width: 0; }
+.table-wrap table { min-width: 560px; }
+th, td { overflow-wrap: anywhere; }
+td.version, th:first-child { white-space: nowrap; }
+/* Column widths belong to the table layout; in card mode every cell is the full width. */
+@media (min-width: 601px) {
+  .history th:nth-child(3), .history td:nth-child(3) { max-width: 22ch; }
+  .history th:nth-child(4), .history td:nth-child(4) { width: 1; white-space: nowrap; }
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.skeleton { display: block; height: 12px; border-radius: 4px; background: #e9eaec; margin: 4px 0; }
+.skeleton:last-child { width: 60%; }
+.skeleton { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.55 } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* The invalid field states the problem on the field itself, not in a corner of the page. */
+.err { color: var(--bad); font-size: 13px; margin: 8px 0 0; }
+label.invalid { color: var(--bad); }
+label.invalid input { border-color: var(--bad); }
+
+/* Below 600px a five-column row is a record, not a table: each row becomes a labelled card,
+   so nothing is cut off at the edge and no horizontal swiping is needed. */
+@media (max-width: 600px) {
+  .table-wrap table { min-width: 0; border: 0; }
+  .table-wrap thead { display: none; }
+  .table-wrap tbody tr { display: grid; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .table-wrap tbody tr:last-child { border-bottom: 0; }
+  .table-wrap td { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; padding: 2px 0; border: 0; }
+  .table-wrap td::before {
+    content: attr(data-label); color: var(--muted); font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .table-wrap td[colspan] { display: block; }
+  .table-wrap td[colspan]::before { content: none; }
+  .table-wrap td.version { white-space: normal; }
+}
 
 .muted { color: var(--muted); font-size: 13px; }
 .warn { color: var(--warn); font-size: 13px; }

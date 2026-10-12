@@ -107,26 +107,30 @@ export default function EventsView({ client, me, game, env }: Props) {
 
       <div className="col">
         <h2>Events</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>id</th>
-              <th>name</th>
-              <th>window</th>
-              <th>every</th>
-              <th>fires</th>
-            </tr>
-          </thead>
+        <div className="table-wrap">
+          <table className="events">
+            <caption className="sr-only">
+              scheduled events for {game}/{env}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">id</th>
+                <th scope="col">name</th>
+                <th scope="col">window</th>
+                <th scope="col">every</th>
+                <th scope="col">fires</th>
+              </tr>
+            </thead>
           <tbody>
             {events.map((ev) => (
               <tr key={ev.id}>
-                <td>{ev.id}</td>
-                <td>{ev.name}</td>
-                <td className="muted">
+                <td data-label="id">{ev.id}</td>
+                <td data-label="name">{ev.name}</td>
+                <td data-label="window" className="muted">
                   {new Date(ev.starts_at).toLocaleString()} → {new Date(ev.ends_at).toLocaleString()}
                 </td>
-                <td>{ev.repeat_every_secs ? `${ev.repeat_every_secs}s` : "once"}</td>
-                <td>
+                <td data-label="every">{ev.repeat_every_secs ? `${ev.repeat_every_secs}s` : "once"}</td>
+                <td data-label="fires">
                   <button className="ghost" onClick={() => void showFires(ev.id)}>
                     inspect
                   </button>
@@ -146,8 +150,9 @@ export default function EventsView({ client, me, game, env }: Props) {
                 </td>
               </tr>
             )}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );
