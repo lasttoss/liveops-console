@@ -132,12 +132,16 @@ worker (same binary) ──▶ claims due fires, records the effect in the same 
 
 ## Numbers
 
-- **41 Go test functions** across 8 packages and **11 panel tests**; `go test -race` on
-  every push, with the integration tests running against a real PostgreSQL in CI.
-- **55.7% statement coverage** (`make coverage`). The number is printed rather than
-  targeted: the two `cmd/` packages are clients, and their behaviour is the `demo` CI job
-  which greps their output. Every *promise* in the table above is asserted - versions,
-  conflicts, one effect under four concurrent workers, an uneditable trail.
+- **41 Go test functions** across 9 packages (7 under `internal/`, plus both `cmd/` binaries)
+  and **11 panel tests**; `go test -race` on every push, with the integration tests running
+  against a real PostgreSQL in CI.
+- **55.7% statement coverage** (`make test-db`, which starts a throwaway PostgreSQL). `make
+  coverage` alone prints **34.6%**: without `LIVEOPS_TEST_DSN` the store's tests skip, and the
+  difference between the two numbers is the part of the service a database is needed to
+  reach. The number is printed rather than targeted: the two `cmd/` packages are clients,
+  and their behaviour is the `demo` CI job which greps their output. Every *promise* in the
+  table above is asserted - versions, conflicts, one effect under four concurrent workers,
+  an uneditable trail.
 - **~1,900 lines of Go and ~800 of TypeScript**, against **~1,200 lines of tests**.
 - The demo is **12 steps, no setup**: `docker compose up` plus three `docker run` calls.
 
