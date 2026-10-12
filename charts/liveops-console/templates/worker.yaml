@@ -1,0 +1,55 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "liveops-console.fullname" . }}-worker
+  labels:
+    {{- include "liveops-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  # More than one replica is not a guess about load: it is a property of the claim. The
+  # worker's whole job is one `UPDATE ... FOR UPDATE SKIP LOCKED` per pass, so two pods
+  # cannot produce the same effect twice, and two pods are what keeps fires claimed while
+  # one of them restarts.
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "liveops-console.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "liveops-console.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: {{ default (include "liveops-console.fullname" .) .Values.serviceAccount.name }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: {{ include "liveops-console.image" . }}
+          args:
+            - "--mode"
+            - "worker"
+            - "--tick"
+            - {{ .Values.worker.tick | quote }}
+          env:
+            - name: LIVEOPS_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "liveops-console.secretName" . }}
+                  key: LIVEOPS_DSN
+          # No probes: this process has no port and its liveness is "the loop is still
+          # calling the database". A failed query stops the process, and the restart is
+          # the retry - which is only safe because the effect cannot happen twice.
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+{{- end }}

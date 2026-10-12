@@ -1,0 +1,90 @@
+/* One stylesheet, no framework. The panel is here to prove the API contract is usable
+   from TypeScript, and a build step that downloads a design system would hide that
+   behind a bundle nobody reads. */
+:root {
+  --paper: #f6f6f4;
+  --ink: #24272e;
+  --muted: #6b7280;
+  --line: #d8dade;
+  --accent: #b3541e;
+  --ok: #14653a;
+  --bad: #a11d2b;
+  --warn: #8a6d1a;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+
+.shell { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+header h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.01em; }
+.sub { margin: 0 0 18px; color: var(--muted); max-width: 70ch; }
+.sub code { background: #e9eaec; padding: 1px 4px; border-radius: 3px; }
+
+.controls { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+input, select, textarea {
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 9px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+textarea { width: 100%; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.whoami { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.pill { background: #e9eaec; border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+.role-admin { background: #f6e3d8; color: #7a3a12; }
+.role-operator { background: #e4ecf6; color: #1d3b63; }
+.role-viewer { background: #e9eaec; }
+
+nav { display: flex; gap: 6px; margin: 22px 0 18px; border-bottom: 1px solid var(--line); }
+nav button {
+  border: 0; background: none; padding: 9px 14px; font: inherit; color: var(--muted);
+  cursor: pointer; border-bottom: 2px solid transparent;
+}
+nav button.active { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 12px; }
+.field { margin-bottom: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+button { font: inherit; border-radius: 6px; border: 1px solid var(--ink); background: var(--ink); color: #fff; padding: 8px 14px; cursor: pointer; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
+
+.box { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
+.box-head { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.box pre { margin: 0; white-space: pre-wrap; }
+
+table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: #fbfbfa; }
+tr:last-child td { border-bottom: 0; }
+tr.is-current td { background: #fdf4ef; }
+tr.is-refused td { background: #fdf0f1; }
+
+.muted { color: var(--muted); font-size: 13px; }
+.warn { color: var(--warn); font-size: 13px; }
+.ok { color: var(--ok); font-size: 13px; }
+.bad { color: var(--bad); font-size: 13px; }
+.conflict { border: 1px solid var(--bad); background: #fdf0f1; border-radius: 8px; padding: 12px; margin-top: 12px; }
+.conflict p { margin: 6px 0 10px; font-size: 13px; }
+.outcome { border-radius: 999px; padding: 2px 9px; font-size: 12px; }
+.outcome-ok { background: #dff0e6; color: var(--ok); }
+.outcome-denied, .outcome-conflict { background: #f8dfe2; color: var(--bad); }

@@ -1,0 +1,18 @@
+liveops-console is installed.
+
+  api    : {{ include "liveops-console.fullname" . }} ({{ .Values.replicaCount }} replica(s))
+  worker : {{ if .Values.worker.enabled }}{{ include "liveops-console.fullname" . }}-worker ({{ .Values.worker.replicaCount }} replicas, every {{ .Values.worker.tick }}){{ else }}disabled{{ end }}
+  tokens : {{ if .Values.auth.existingSecret }}from secret {{ .Values.auth.existingSecret }}{{ else if .Values.auth.tokens }}from the values in this release{{ else }}MISSING - the API will refuse to start{{ end }}
+  policy : networkPolicy {{ if .Values.networkPolicy.enabled }}enabled{{ else }}DISABLED - /metrics has no token, so this is the access decision{{ end }}
+
+Reach the API from your machine:
+
+  kubectl port-forward svc/{{ include "liveops-console.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+
+Then check the two promises this service makes, without reading any code:
+
+  curl -s localhost:{{ .Values.service.port }}/metrics | grep effects
+
+Prove the install itself - the secret is wired, the database is reachable, the migrations apply:
+
+  helm test {{ .Release.Name }}

@@ -1,0 +1,62 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "liveops-console.fullname" . }}-api
+  labels:
+    {{- include "liveops-console.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "liveops-console.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # The panel of this release reaches the API through the same Service.
+    {{- if .Values.networkPolicy.ingress.panel }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "liveops-console.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    {{- end }}
+    # /metrics and /healthz have no token, so the network is the access decision. A
+    # namespace opts in by carrying this label; nothing is allowed by default.
+    {{- if .Values.networkPolicy.ingress.metrics }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{ .Values.networkPolicy.ingress.metricsNamespaceLabel | quote }}: "true"
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    {{- end }}
+    # Some CNIs (Calico, Cilium) enforce policies on kubelet probe traffic too: the moment
+    # an ingress rule selects this pod, the probes can be refused and the pod is restarted
+    # for being alive. The node CIDR is a value rather than a guess, and the comment is
+    # here because this is a real incident, not a hypothesis.
+    {{- with .Values.networkPolicy.kubeletCIDR }}
+    - from:
+        - ipBlock:
+            cidr: {{ . }}
+      ports:
+        - protocol: TCP
+          port: {{ $.Values.service.port }}
+    {{- end }}
+  egress:
+    # DNS first, always: a policy that forgets it produces a service that resolves
+    # nothing and reports a timeout, which is the most expensive hour in this file.
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: {{ .Values.networkPolicy.dnsPort }}
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.networkPolicy.database.port }}
+{{- end }}

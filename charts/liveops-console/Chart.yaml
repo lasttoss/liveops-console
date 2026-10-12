@@ -1,0 +1,16 @@
+apiVersion: v2
+name: liveops-console
+description: >-
+  A LiveOps control plane for a live game: versioned remote configuration with rollback,
+  an append-only audit trail, and scheduled rewards that happen exactly once. The API and
+  the worker are one image; the panel is a separate deployment and talks to the API.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/lasttoss/liveops-console
+sources:
+  - https://github.com/lasttoss/liveops-console
+maintainers:
+  - name: Tran Trung Dung
+    url: https://github.com/lasttoss
+keywords: [liveops, remote-config, feature-flags, audit, postgres, gamdev, kubernetes]

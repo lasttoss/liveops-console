@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "liveops-console.fullname" . }}-test-migrate
+  labels:
+    {{- include "liveops-console.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: migrate
+      image: {{ include "liveops-console.image" . }}
+      # The test asserts the part of the install that nothing else proves: the Secret is
+      # wired, the DSN reaches the database, and the embedded migrations apply. It runs
+      # the real image rather than a curl container, so there is no second image to keep
+      # in step and no assumption that the API answers without a token.
+      args: ["--mode", "migrate"]
+      env:
+        - name: LIVEOPS_DSN
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "liveops-console.secretName" . }}
+              key: LIVEOPS_DSN
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir: {}

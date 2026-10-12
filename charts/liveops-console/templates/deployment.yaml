@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "liveops-console.fullname" . }}
+  labels:
+    {{- include "liveops-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "liveops-console.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "liveops-console.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+      annotations:
+        # A rolling update starts the new pod, waits for it to be ready, then removes the
+        # old one: the readiness probe is what makes "no dropped writes" true rather than
+        # hopeful.
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ default (include "liveops-console.fullname" .) .Values.serviceAccount.name }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: {{ include "liveops-console.image" . }}
+          args:
+            - "--mode"
+            - "server"
+            - "--addr"
+            - ":{{ .Values.service.port }}"
+            - "--migrate-on-start={{ .Values.migrateOnStart }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+          env:
+            - name: LIVEOPS_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "liveops-console.secretName" . }}
+                  key: LIVEOPS_TOKENS
+            - name: LIVEOPS_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "liveops-console.secretName" . }}
+                  key: LIVEOPS_DSN
+            - name: LIVEOPS_ENVS
+              value: {{ .Values.envs | quote }}
+          # /readyz pings the database, /healthz does not: a process that is alive but
+          # cannot reach its database is exactly the state that should leave the Service
+          # endpoints, and liveness must not restart it for that.
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

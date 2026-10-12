@@ -1,0 +1,133 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: liveops
+          POSTGRES_PASSWORD: liveops
+          POSTGRES_DB: liveops
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U liveops" --health-interval 2s
+          --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      # The integration tests run here, against a real PostgreSQL, because the promises
+      # this repository makes - one effect per fire, an uneditable audit trail, a losing
+      # writer that is told which version won - are database promises. A unit-test-only
+      # run would be green and prove none of them.
+      - name: go test -race with coverage
+        env:
+          LIVEOPS_TEST_DSN: postgres://liveops:liveops@localhost:5432/liveops?sslmode=disable
+        run: |
+          go test -race -coverprofile=cover.out -covermode=atomic ./...
+          go tool cover -func=cover.out | tail -1
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: go vet
+        run: go vet ./...
+
+  image:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: liveops
+          POSTGRES_PASSWORD: liveops
+          POSTGRES_DB: liveops
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U liveops" --health-interval 2s
+          --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker build
+        run: docker build -t liveops-console:ci .
+      # The image is the deliverable, so the image gets run: migrations through the
+      # embedded SQL, then a worker pass, against a real database. Nothing here needs a
+      # shell, which is the reason the image can be distroless.
+      - name: the image migrates and works
+        run: |
+          docker run --rm --network host -e LIVEOPS_DSN='postgres://liveops:liveops@localhost:5432/liveops?sslmode=disable' liveops-console:ci --mode migrate
+          docker run --rm --network host -e LIVEOPS_DSN='postgres://liveops:liveops@localhost:5432/liveops?sslmode=disable' liveops-console:ci --mode worker --once
+
+  panel:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: panel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: panel/package-lock.json
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+      # The panel has two pure pieces worth testing - the API client's conflict handling
+      # and the UI's copy of the authorisation rule - and one of those tests has already
+      # caught a divergence from the server once.
+      - name: vitest
+        run: npm test
+      - name: tsc --noEmit and vite build
+        run: npm run build
+
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: compose up
+        run: docker compose up -d --build
+      - name: wait for the api
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:18100/healthz >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          docker compose logs api
+          exit 1
+      # The gate is the output, not the exit code: "the second pass found nothing" is
+      # the claim this repository makes, so CI greps for it.
+      - name: the story
+        run: |
+          docker run --rm --network liveops-console_default -e LIVEOPS_API=http://api:8080 --entrypoint /usr/local/bin/demo liveops-console:local | tee /tmp/story.txt
+          docker run --rm --network liveops-console_default -e LIVEOPS_DSN='postgres://liveops:liveops@postgres:5432/liveops?sslmode=disable' --entrypoint /usr/local/bin/console liveops-console:local --mode worker --once | tee /tmp/w1.txt
+          docker run --rm --network liveops-console_default -e LIVEOPS_DSN='postgres://liveops:liveops@postgres:5432/liveops?sslmode=disable' --entrypoint /usr/local/bin/console liveops-console:local --mode worker --once | tee /tmp/w2.txt
+          docker run --rm --network liveops-console_default -e LIVEOPS_API=http://api:8080 --entrypoint /usr/local/bin/demo liveops-console:local --report | tee /tmp/report.txt
+          grep -q 'PUT /v1/config -> 200' /tmp/story.txt
+          grep -q 'If-None-Match -> 304' /tmp/story.txt
+          grep -q -- '-> 409' /tmp/story.txt
+          grep -q -- '-> 403' /tmp/story.txt
+          grep -q 'claimed 1 fire' /tmp/w1.txt
+          grep -q 'claimed 0 fires' /tmp/w2.txt
+          grep -q 'liveops_event_effects_total 1' /tmp/report.txt
+          grep -q 'effects = 1' /tmp/report.txt
+          # The panel image is part of the deliverable, so the demo check proves it
+          # serves and that the /v1 proxy is wired to the API.
+          curl -fsS http://localhost:18101/ | grep -q 'LiveOps console'
+          curl -fsS -o /dev/null -w '%{http_code}\n' -H 'Authorization: Bearer view-token' http://localhost:18101/v1/whoami | grep -q 200
+      - name: logs on failure
+        if: failure()
+        run: docker compose logs --tail=100

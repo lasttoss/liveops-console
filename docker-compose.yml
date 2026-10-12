@@ -1,0 +1,51 @@
+# The project name is pinned because the one-off containers below join this network by
+# name: a demo that breaks when someone renames the checkout directory is a demo that
+# breaks for no reason.
+name: liveops-console
+
+# Three services: a database, the API, and the panel that talks to it. The demo client
+# and the worker are the same image as the API with a different entrypoint, and they are
+# started with `docker run` (see the Makefile) rather than declared here - declaring them
+# would make `compose up` start a second API by accident, which it did.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: liveops
+      POSTGRES_PASSWORD: liveops
+      POSTGRES_DB: liveops
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liveops -d liveops"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    # No volume and no published port: the demo is meant to be disposable, and a
+    # database port on the host is how a laptop ends up with three of them.
+
+  panel:
+    image: liveops-console-panel:local
+    build: ./panel
+    ports:
+      - "${LIVEOPS_PANEL_PORT:-18101}:80"
+    depends_on:
+      api:
+        condition: service_started
+
+  api:
+    image: liveops-console:local
+    build: .
+    command: ["--mode", "server"]
+    environment:
+      LIVEOPS_DSN: postgres://liveops:liveops@postgres:5432/liveops?sslmode=disable
+      # Demo tokens. A real deployment reads these from a secret; they are here because
+      # `make demo` has to work with no setup at all.
+      LIVEOPS_TOKENS: "${LIVEOPS_TOKENS:-admin-token:em:admin,op-token:ci:operator,view-token:viewer:viewer}"
+      LIVEOPS_ENVS: "dev,staging,prod"
+    ports:
+      # Configurable, and not 8080: while this was written, 8080, 18080 and 18081 were
+      # all taken by unrelated containers on the same machine. Override with
+      # LIVEOPS_API_PORT when 18100 is taken too.
+      - "${LIVEOPS_API_PORT:-18100}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy

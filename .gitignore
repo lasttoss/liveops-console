@@ -1,0 +1,10 @@
+.env
+/liveops-console
+/console
+/demo
+*.bak
+
+# the panel builds into panel/dist, and the lockfile is committed on purpose: npm ci in
+# CI has to install exactly what was tested here
+panel/node_modules/
+panel/dist/

@@ -1,0 +1,98 @@
+image:
+  repository: ghcr.io/lasttoss/liveops-console
+  tag: ""            # defaults to appVersion
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# The DSN is a credential, so it comes from a Secret in every branch: from an existing
+# one you manage, or from the values here, which the chart turns into a Secret rather
+# than putting a connection string into the Deployment spec where `kubectl describe`
+# would show it.
+database:
+  existingSecret: ""
+  dsn: ""
+
+# Token list: "token:actor:role". A real installation brings its own Secret; an empty
+# list is refused by the binary at start rather than run without an actor, because a
+# write nobody is named for is a write the audit trail cannot explain.
+auth:
+  existingSecret: ""
+  tokens: ""
+  # Writes in these environments require the admin role; reads do not.
+  productionEnvs: "prod,production"
+
+envs: "dev,staging,prod"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# The worker is a second Deployment of the same image with `--mode worker`. Two replicas
+# are safe by construction - the claim is one `UPDATE ... FOR UPDATE SKIP LOCKED`, so
+# concurrent workers cannot produce the same effect twice - and two replicas are what
+# makes a rolling restart invisible instead of a minute of unclaimed fires.
+worker:
+  enabled: true
+  replicaCount: 2
+  tick: 1s
+
+# Off by default, and the reason is in the design notes rather than in a comment: the
+# read path is one indexed row lookup and the write path is serialised per key by an
+# advisory lock, so adding replicas buys reads and does nothing for writes. Turn it on
+# when a load test says the reads need it, not because a chart is supposed to have one.
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 75
+
+# On by default, unlike most charts, because this service answers /metrics without a
+# token: the access decision belongs to the network, so the network policy is part of
+# the default rather than an optional extra someone remembers later.
+networkPolicy:
+  enabled: true
+  dnsPort: 53
+  # Egress to PostgreSQL. An in-cluster database is the release's own postgres service;
+  # an external one must be named here, because "allow 5432 anywhere" is not a policy.
+  database:
+    port: 5432
+    namespaceSelector: {}
+    podSelector:
+      matchLabels: {}
+  # Ingress: the panel of the same release, plus namespaces that opted in for scraping.
+  # A monitoring namespace is opt-in by label, not by default: without the label, nothing
+  # outside this release can read /metrics, which is the intended state.
+  ingress:
+    panel: true
+    metrics: true
+    metricsNamespaceLabel: liveops.dev/scrape
+  # Some CNIs refuse kubelet probe traffic to a pod that any ingress rule selects, so
+  # the node CIDR is allowed explicitly and can be widened or narrowed per cluster.
+  kubeletCIDR: ""
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# The migrations run inside the API at start, guarded by an advisory lock so two replicas
+# cannot race. Set to false when the schema change is a separate, reviewable step - which
+# is what a large installation should do.
+migrateOnStart: true
+
+nameOverride: ""
+fullnameOverride: ""

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "liveops-console.fullname" . }}
+  labels:
+    {{- include "liveops-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+  selector:
+    {{- include "liveops-console.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api
