@@ -15,6 +15,13 @@ make panel       # the panel container; paste op-token, then press publish on to
 make worker      # one worker pass, on its own - run it twice and watch the second say zero
 ```
 
+## The whole story, in one command
+
+![make demo running the config lifecycle, the audit trail with denials beside successes, and two worker passes where the second finds nothing pending, ending with the panel URL](docs/demo.gif)
+
+*`make demo`. The audit table holds successes and refusals in the same table, which is the point: a trail that only records what worked is a log. The output is the command's; the pauses between lines are the recording's.*
+
+
 ## What this demonstrates
 
 | capability | how it is done here | where |
