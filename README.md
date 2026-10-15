@@ -15,6 +15,12 @@ make panel       # the panel container; paste op-token, then press publish on to
 make worker      # one worker pass, on its own - run it twice and watch the second say zero
 ```
 
+**Where to look first:** [`internal/events/events.go`](internal/events/events.go) turns a schedule into
+instants that must happen exactly once,
+[`internal/remoteconfig/remoteconfig.go`](internal/remoteconfig/remoteconfig.go) is versioned config with
+rollback, and [`internal/auditlog/auditlog.go`](internal/auditlog/auditlog.go) the trail the database will not
+let you edit. `make demo` runs it end to end.
+
 ## The whole story, in one command
 
 ![make demo running the config lifecycle, the audit trail with denials beside successes, and two worker passes where the second finds nothing pending, ending with the panel URL](docs/demo.gif)
