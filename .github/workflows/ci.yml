@@ -72,6 +72,18 @@ jobs:
           docker run --rm --network host -e LIVEOPS_DSN='postgres://liveops:liveops@localhost:5432/liveops?sslmode=disable' liveops-console:ci --mode migrate
           docker run --rm --network host -e LIVEOPS_DSN='postgres://liveops:liveops@localhost:5432/liveops?sslmode=disable' liveops-console:ci --mode worker --once
 
+  # Every command the README names, checked, and run where it can run without the whole stack. Two
+  # sibling repositories shipped README commands that did not work - five `make` targets deleted from a
+  # Makefile, a target that died in a flag parser - and CI could not see either of them, because it runs
+  # a fixed list of targets rather than the commands the documentation promises.
+  readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the figure checker compares the commit dates of a figure and its sources
+      - run: make readme-check
+
   chart:
     runs-on: ubuntu-latest
     steps:

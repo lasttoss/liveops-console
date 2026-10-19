@@ -185,7 +185,13 @@ meta = ('<!-- diagram-meta {"topic":"liveops-console-architecture","level":"cont
         '"sources":["internal/api/api.go","internal/pgstore/pgstore.go","internal/auth/rbac.go","internal/events/events.go",'
         '"internal/migrate/migrations/0001_schema.sql","internal/migrate/migrations/0002_audit_append_only.sql",'
         '"internal/metrics/metrics.go","cmd/console/main.go","panel/src/api.ts","charts/liveops-console/values.yaml"],'
-        '"updated":"2026-10-12"} -->')
+        '"updated":"2026-10-19",'
+        # Kept in the generator, not only in the committed HTML: the note lives here so regenerating the
+        # figure cannot drop it, which is what happened to the export this run fixed.
+        '"verified":"2026-10-12 at 87dff35 - the change in cmd/console/main.go was the order of flag validation; '
+        'the write path, the worker and the guarantees in this figure are unchanged. 2026-10-19 - re-generated and '
+        're-exported: the committed .png was three commits behind the .html, and the checker that reports that now '
+        'lives in scripts/ instead of on the machine the figure was drawn on"} -->')
 
 page = f"""{meta}
 <!DOCTYPE html>

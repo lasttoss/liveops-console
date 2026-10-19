@@ -2,7 +2,10 @@
 # PostgreSQL: that is the difference between a repository and a screenshot.
 IMAGE ?= golang:1.25
 CACHE ?= liveops-gocache
-RUN   := docker run --rm -v $(PWD):/app -v $(CACHE):/go -w /app $(IMAGE)
+# The build runs in a container, where git refuses the repository mounted from the host (root opens a
+# tree owned by the user who launched it), so Go's VCS stamping cannot work and `go build` fails with
+# "error obtaining VCS status: exit status 128". Stamping is worth nothing for a container build.
+RUN   := docker run --rm -e GOFLAGS=-buildvcs=false -v $(PWD):/app -v $(CACHE):/go -w /app $(IMAGE)
 
 API_PORT     ?= 18100
 PANEL_PORT   ?= 18101
@@ -149,5 +152,22 @@ chart:
 	@$(KCONF) < /tmp/liveops-full.yaml
 	@echo "chart ok: both branches rendered, counted and validated"
 
-diagram:
-	@bash ~/.pi/agent/scripts/diagram-freshness.sh
+diagram: ## Regenerate the figure, re-export it, and check it against the sources it names
+	# The checker is in this repository, not on the machine of whoever drew the figure: it used to be
+	# ~/.pi/agent/scripts/diagram-freshness.sh, so the gate this README describes could not run in a
+	# clean clone. It also compares the committed .png against the .html it came from, which is how the
+	# export that was three commits behind was found.
+	@python3 docs/figures/liveops-console-architecture.generator.py
+	@python3 scripts/export-figure.py docs/figures/liveops-console-architecture.html
+	@python3 scripts/diagram-freshness.py .
+
+# Every command this README names has to resolve, and the ones that need no running stack are run.
+# Entries are ';'-separated; a leading '!' means the command must fail. What cannot run here is printed
+# with the reason rather than skipped in silence.
+README_RUN ?= make diagram; make test; make test-db
+README_SKIP ?= make demo | brings the whole stack up from empty: the demo job does it; make worker | one worker pass, against that running stack; make panel | the panel container, against that running stack; make up | starts the stack; make down | stops it; make logs | follows the container logs; make psql | opens a shell in the database; make image | builds and runs the image; make chart | helm lint and render, which the chart job runs; make panel-dev | npm install in panel/ and a dev server
+
+.PHONY: readme-check
+readme-check: build ## Every command this README names resolves, and the offline ones are run
+	@README_RUN='$(README_RUN)' README_SKIP='$(README_SKIP)' python3 scripts/readme-check.py .
+

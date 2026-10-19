@@ -13,6 +13,7 @@ make demo        # compose up from empty: the story, the worker twice, then the 
 make test-db     # start PostgreSQL, run every test including the integration ones
 make panel       # the panel container; paste op-token, then press publish on top of v1
 make worker      # one worker pass, on its own - run it twice and watch the second say zero
+make readme-check # every command named in this file resolves, and the offline ones are run
 ```
 
 **Where to look first:** [`internal/events/events.go`](internal/events/events.go) turns a schedule into
@@ -178,8 +179,9 @@ worker (same binary) ──▶ claims due fires, records the effect in the same 
 | `docker-compose.yml` | ✅ | postgres + api + panel; the demo client and the worker are one-off `docker run`s so `compose up` cannot start a second API by accident |
 | `Dockerfile` | ✅ | two stages, distroless `static-debian12:nonroot`; migrations are embedded in the binary because the final image has no shell |
 | Helm chart | ✅ | `charts/liveops-console` - `helm lint --strict`, both value branches rendered, then `kubeconform` |
-| `docs/figures/` + freshness gate | ✅ | `liveops-console-architecture` with `diagram-meta`; `make diagram` fails on a stale export |
+| `docs/figures/` + freshness gate | ✅ | `liveops-console-architecture` with `diagram-meta`; `make diagram` fails on a stale export; the `.png` export is checked against the `.html` it came from, and the checker is in `scripts/`, so CI runs it |
 | tests + coverage in CI | ✅ | unit tests without a database, integration tests with one, coverage printed on every run |
+| documented commands | ✅ | `make readme-check` resolves every command this file names and runs the ones that need no running stack; a `~/` path in a recipe fails, because a target that needs one machine is not a target |
 | README with what it demonstrates | ✅ | this file |
 
 ## Licence
